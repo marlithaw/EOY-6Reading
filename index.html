@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MLL & Tier 3 Observation Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,700;1,9..144,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #F7F3EC;
+      --paper: #FFFDF9;
+      --ink: #1C2A3A;
+      --ink-light: #5A6A7A;
+      --amber: #C8851C;
+      --amber-pale: #FEF6E8;
+      --green: #1E6B47;
+      --red: #B91C1C;
+      --border: #DDD5C4;
+      --navy: #1C2A3A;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Mono', monospace; background: var(--bg); color: var(--ink); min-height: 100vh; }
+
+```
+/* ── HEADER ── */
+.app-header {
+  background: var(--navy);
+  color: white;
+  padding: 1.25rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.app-title { font-family: 'Fraunces', serif; font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; }
+.app-subtitle { font-size: 0.62rem; opacity: 0.55; letter-spacing: 0.12em; text-transform: uppercase; margin-top: 0.2rem; }
+.header-btns { display: flex; gap: 0.5rem; }
+.hdr-btn {
+  font-family: 'DM Mono', monospace; font-size: 0.72rem;
+  padding: 0.45rem 0.9rem; background: rgba(255,255,255,0.08); color: white;
+  border: 1px solid rgba(255,255,255,0.25); border-radius: 4px; cursor: pointer; transition: background 0.15s;
+}
+.hdr-btn:hover { background: rgba(255,255,255,0.18); }
+
+/* ── SESSION BAR ── */
+.session-bar {
+  background: white; border-bottom: 2.5px solid var(--amber);
+  padding: 0.9rem 2rem; display: flex; gap: 1.5rem; align-items: flex-end; flex-wrap: wrap;
+}
+.sf { display: flex; flex-direction: column; gap: 0.2rem; }
+.sf label { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-light); }
+.sf input, .sf select {
+  font-family: 'DM Mono', monospace; font-size: 0.8rem;
+  border: 1px solid var(--border); border-radius: 4px; padding: 0.35rem 0.6rem;
+  background: var(--bg); color: var(--ink); min-width: 120px;
+}
+.session-save-btn {
+  font-family: 'DM Mono', monospace; font-size: 0.72rem;
+  padding: 0.4rem 1rem; background: var(--navy); color: white;
+  border: none; border-radius: 4px; cursor: pointer; margin-bottom: 1px;
+}
+
+/* ── LEGEND + FILTERS ── */
+.legend-bar {
+  background: var(--paper); border-bottom: 1px solid var(--border);
+  padding: 0.5rem 2rem; display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center;
+}
+.leg-group { display: flex; align-items: center; gap: 0.5rem; font-size: 0.62rem; color: var(--ink-light); }
+.leg-label { font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; }
+.leg-item { display: flex; align-items: center; gap: 0.2rem; }
+.leg-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+.filter-bar {
+  padding: 0.6rem 2rem; display: flex; gap: 0.4rem; align-items: center;
+  background: var(--bg); border-bottom: 1px solid var(--border); flex-wrap: wrap;
+}
+.fl { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-light); margin-right: 0.25rem; }
+.fbtn {
+  font-family: 'DM Mono', monospace; font-size: 0.7rem;
+  padding: 0.25rem 0.7rem; border: 1px solid var(--border); border-radius: 100px;
+  background: white; cursor: pointer; color: var(--ink); transition: all 0.12s;
+}
+.fbtn.on { background: var(--navy); color: white; border-color: var(--navy); }
+
+/* ── TABLE ── */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; background: white; }
+thead th {
+  font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-light);
+  padding: 0.65rem 0.4rem; text-align: center; background: #F3EFE8;
+  border-bottom: 2px solid var(--border); white-space: nowrap; position: sticky; top: 0; z-index: 5;
+}
+thead th.th-name { text-align: left; padding-left: 1.5rem; min-width: 160px; }
+thead th.th-tags { min-width: 90px; }
+thead th.th-note { min-width: 130px; }
+
+tbody tr { border-bottom: 1px solid #EDE8DF; transition: background 0.1s; }
+tbody tr:hover { background: #FDFAF5; }
+tbody tr.needs-attn { background: #FFF8F0; border-left: 3px solid var(--amber); }
+tbody tr.hidden-row { display: none; }
+
+/* Name cell */
+.td-name { padding: 0.75rem 0.5rem 0.75rem 1.5rem; }
+.s-last { font-family: 'Fraunces', serif; font-size: 0.9rem; font-weight: 600; }
+.s-first { font-size: 0.72rem; color: var(--ink-light); margin-top: 0.05rem; }
+.s-info { font-size: 0.62rem; color: var(--ink-light); opacity: 0.7; margin-top: 0.15rem; letter-spacing: 0.03em; }
+
+/* Tags cell */
+.td-tags { padding: 0.5rem 0.4rem; text-align: center; }
+.tag {
+  display: inline-block; font-size: 0.58rem; padding: 0.1rem 0.35rem;
+  border-radius: 3px; cursor: pointer; border: 1px solid transparent;
+  transition: all 0.12s; margin: 0.1rem; user-select: none;
+}
+.tag-mll-on  { background: #DBEAFE; color: #1E40AF; border-color: #93C5FD; }
+.tag-mll-off { background: #F3F4F6; color: #9CA3AF; border-color: #E5E7EB; }
+.tag-t3-on   { background: #FEF9C3; color: #854D0E; border-color: #FDE047; }
+.tag-t3-off  { background: #F3F4F6; color: #9CA3AF; border-color: #E5E7EB; }
+.tag-flag-on  { font-size: 0.85rem; cursor: pointer; }
+.tag-flag-off { font-size: 0.85rem; cursor: pointer; opacity: 0.2; }
+
+/* Status cells */
+.td-status { padding: 0.5rem 0.3rem; text-align: center; vertical-align: middle; }
+.sind {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; border-radius: 50%; cursor: pointer;
+  font-size: 0.68rem; font-weight: 700; font-family: 'DM Mono', monospace;
+  transition: transform 0.1s, box-shadow 0.1s; user-select: none;
+  border: 2px solid transparent;
+}
+.sind:hover { transform: scale(1.12); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+
+/* Reading */
+.r0 { background: #F1F1F1; color: #AAAAAA; border-color: #DEDEDE; }
+.r1 { background: #FEF3C7; color: #92400E; border-color: #FDE68A; }
+.r2 { background: #D1FAE5; color: #065F46; border-color: #6EE7B7; }
+
+/* Language output */
+.l0 { background: #F1F1F1; color: #AAAAAA; border-color: #DEDEDE; }
+.l1 { background: #DBEAFE; color: #1E3A5F; border-color: #93C5FD; }
+.l2 { background: #BFDBFE; color: #1E3A5F; border-color: #60A5FA; }
+.l3 { background: #2563EB; color: #FFFFFF; border-color: #1D4ED8; }
+
+/* Participation */
+.p0 { background: #F1F1F1; color: #AAAAAA; border-color: #DEDEDE; }
+.p1 { background: #FEF3C7; color: #92400E; border-color: #FDE68A; }
+.p2 { background: #D1FAE5; color: #065F46; border-color: #6EE7B7; }
+
+/* Regulation */
+.g0 { background: #D1FAE5; color: #065F46; border-color: #6EE7B7; }
+.g1 { background: #FEF3C7; color: #92400E; border-color: #FDE68A; }
+.g2 { background: #FEE2E2; color: #991B1B; border-color: #FCA5A5; }
+
+/* Notes */
+.td-note { padding: 0.4rem 0.5rem; }
+.note-inp {
+  font-family: 'DM Mono', monospace; font-size: 0.7rem;
+  border: 1px solid var(--border); border-radius: 4px; padding: 0.3rem 0.45rem;
+  width: 100%; min-width: 120px; background: var(--bg); color: var(--ink); resize: none; height: 36px;
+}
+.note-inp:focus { outline: none; border-color: var(--amber); }
+
+/* ── SUMMARY FOOTER ── */
+.summary-bar {
+  background: var(--navy); color: white; padding: 1.25rem 2rem;
+  display: flex; gap: 2.5rem; align-items: center; flex-wrap: wrap;
+}
+.stat { text-align: center; }
+.stat-n { font-family: 'Fraunces', serif; font-size: 1.8rem; font-weight: 700; line-height: 1; }
+.stat-l { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.55; margin-top: 0.2rem; }
+.stat-amber { color: #FCD34D; }
+.stat-red { color: #FCA5A5; }
+.stat-green { color: #6EE7B7; }
+
+/* Session notes section */
+.session-note-wrap {
+  background: white; border-top: 1px solid var(--border); padding: 1.25rem 2rem;
+}
+.snl { font-family: 'Fraunces', serif; font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--ink); }
+.sn-inp {
+  font-family: 'DM Mono', monospace; font-size: 0.78rem;
+  border: 1px solid var(--border); border-radius: 6px; padding: 0.65rem 1rem;
+  width: 100%; min-height: 70px; background: var(--bg); resize: vertical; color: var(--ink);
+}
+.sn-inp:focus { outline: none; border-color: var(--amber); }
+
+/* ── PRINT STYLES ── */
+@media print {
+  .no-print { display: none !important; }
+  body { background: white; font-size: 8pt; }
+  .app-header { background: #1C2A3A !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; padding: 0.5rem 1rem; }
+  .app-title { font-size: 1rem; }
+  .session-bar { padding: 0.4rem 1rem; gap: 1rem; }
+  .sf label { font-size: 0.5rem; }
+  .sf input, .sf select { font-size: 0.7rem; padding: 0.2rem 0.4rem; }
+  .legend-bar { padding: 0.3rem 1rem; font-size: 0.6rem; }
+  .filter-bar { display: none; }
+  table { font-size: 7.5pt; }
+  .td-name { padding: 0.35rem 0.3rem 0.35rem 1rem; }
+  .s-last { font-size: 0.8rem; }
+  .s-first { font-size: 0.65rem; }
+  .td-status { padding: 0.25rem 0.15rem; }
+  .sind { width: 26px; height: 26px; font-size: 0.6rem; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .td-note { padding: 0.2rem 0.3rem; }
+  .note-inp { font-size: 0.65rem; height: 28px; border: 1px solid #ccc !important; }
+  .summary-bar { background: #1C2A3A !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; padding: 0.5rem 1rem; gap: 1.5rem; }
+  .stat-n { font-size: 1.2rem; }
+  .session-note-wrap { padding: 0.5rem 1rem; }
+  .sn-inp { min-height: 40px; }
+  thead th { background: #F3EFE8 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; font-size: 0.55rem; padding: 0.35rem 0.25rem; }
+  .tag { font-size: 0.52rem; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .tag-mll-on, .tag-t3-on { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  @page { margin: 0.4in; size: landscape; }
+}
+```
+
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+
+<header class="app-header">
+  <div>
+    <div class="app-title">Observation Tracker</div>
+    <div class="app-subtitle">MLL &amp; Tier 3 · AH-HA Coaching</div>
+  </div>
+  <div class="header-btns no-print">
+    <button class="hdr-btn" onclick="window.print()">🖨 Print Sheet</button>
+    <button class="hdr-btn" onclick="clearSession()">↺ New Session</button>
+  </div>
+</header>
+
+<!-- SESSION BAR -->
+
+<div class="session-bar">
+  <div class="sf">
+    <label>Date</label>
+    <input type="date" id="sessDate">
+  </div>
+  <div class="sf">
+    <label>Block</label>
+    <select id="sessBlock">
+      <option value="">— Select —</option>
+      <option value="A">Block A</option>
+      <option value="B">Block B</option>
+      <option value="C">Block C</option>
+    </select>
+  </div>
+  <div class="sf">
+    <label>Subject</label>
+    <select id="sessSubject">
+      <option value="Reading">Reading</option>
+      <option value="Math">Math</option>
+      <option value="Pull-Out">Pull-Out</option>
+      <option value="Small Group">Small Group</option>
+    </select>
+  </div>
+  <div class="sf">
+    <label>Activity / Lesson</label>
+    <input type="text" id="sessActivity" placeholder="e.g. Shared reading, Decoding...">
+  </div>
+  <button class="session-save-btn no-print" onclick="saveSession()">💾 Save</button>
+</div>
+
+<!-- LEGEND -->
+
+<div class="legend-bar no-print">
+  <div class="leg-group">
+    <span class="leg-label">Reading:</span>
+    <span class="leg-item"><span class="leg-dot" style="background:#D1D5DB"></span>—</span>
+    <span class="leg-item"><span class="leg-dot" style="background:#FCD34D"></span>Minimal</span>
+    <span class="leg-item"><span class="leg-dot" style="background:#34D399"></span>Active</span>
+  </div>
+  <div class="leg-group">
+    <span class="leg-label">Language:</span>
+    <span class="leg-item"><span class="leg-dot" style="background:#D1D5DB"></span>S=Silent</span>
+    <span class="leg-item"><span class="leg-dot" style="background:#93C5FD"></span>W=Words</span>
+    <span class="leg-item"><span class="leg-dot" style="background:#60A5FA"></span>P=Phrases</span>
+    <span class="leg-item"><span class="leg-dot" style="background:#2563EB"></span>SE=Sentences</span>
+  </div>
+  <div class="leg-group">
+    <span class="leg-label">Part.:</span>
+    <span class="leg-item"><span class="leg-dot" style="background:#D1D5DB"></span>—</span>
+    <span class="leg-item"><span class="leg-dot" style="background:#FCD34D"></span>Prompted</span>
+    <span class="leg-item"><span class="leg-dot" style="background:#34D399"></span>Volunteer</span>
+  </div>
+  <div class="leg-group">
+    <span class="leg-label">Reg.:</span>
+    <span class="leg-item"><span class="leg-dot" style="background:#34D399"></span>✓</span>
+    <span class="leg-item"><span class="leg-dot" style="background:#FCD34D"></span>1 redirect</span>
+    <span class="leg-item"><span class="leg-dot" style="background:#FCA5A5"></span>2+ / Escalated</span>
+  </div>
+</div>
+
+<!-- FILTERS -->
+
+<div class="filter-bar no-print">
+  <span class="fl">Show:</span>
+  <button class="fbtn on" id="f-all" onclick="setFilter('all')">All</button>
+  <button class="fbtn" id="f-mll" onclick="setFilter('mll')">MLL only</button>
+  <button class="fbtn" id="f-tier3" onclick="setFilter('tier3')">Tier 3 only</button>
+  <button class="fbtn" id="f-flag" onclick="setFilter('flag')">⚑ Flagged</button>
+  <button class="fbtn" id="f-attn" onclick="setFilter('attn')">⚠ Needs Attention</button>
+  <span style="margin-left:auto;">
+    <span class="fl" style="margin:0">Homeroom:</span>
+    <button class="fbtn" id="f-douglas" onclick="setFilter('Douglas')">Douglas</button>
+    <button class="fbtn" id="f-fields" onclick="setFilter('Fields')">Fields</button>
+    <button class="fbtn" id="f-sko" onclick="setFilter('Skoczylas')">Skoczylas</button>
+  </span>
+</div>
+
+<!-- TABLE -->
+
+<div class="table-wrap">
+  <table id="trackerTable">
+    <thead>
+      <tr>
+        <th class="th-name">Student</th>
+        <th class="th-tags">Designation</th>
+        <th>Read<br>Engmt</th>
+        <th>Lang<br>Output</th>
+        <th>Partic-<br>ipation</th>
+        <th>Regula-<br>tion</th>
+        <th class="th-note">Quick Notes</th>
+        <th class="no-print">⚑</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</div>
+
+<!-- SUMMARY -->
+
+<div class="summary-bar no-print">
+  <div class="stat"><div class="stat-n" id="sum-total">0</div><div class="stat-l">Students</div></div>
+  <div class="stat"><div class="stat-n stat-green" id="sum-reading">0</div><div class="stat-l">Active Readers</div></div>
+  <div class="stat"><div class="stat-n stat-green" id="sum-vol">0</div><div class="stat-l">Volunteered</div></div>
+  <div class="stat"><div class="stat-n stat-amber" id="sum-redirect">0</div><div class="stat-l">1 Redirect</div></div>
+  <div class="stat"><div class="stat-n stat-red" id="sum-escalated">0</div><div class="stat-l">2+ Redirects</div></div>
+  <div class="stat"><div class="stat-n" id="sum-mll">0</div><div class="stat-l">MLL Tagged</div></div>
+  <div class="stat"><div class="stat-n" id="sum-t3">0</div><div class="stat-l">Tier 3 Tagged</div></div>
+</div>
+
+<!-- SESSION NOTES -->
+
+<div class="session-note-wrap">
+  <div class="snl">Session Notes</div>
+  <textarea class="sn-inp" id="sessionNotes" placeholder="Overall observations, patterns, follow-up items for next session..."></textarea>
+</div>
+
+<script>
+// ── STUDENT DATA (pre-loaded from schedule) ──
+const STUDENTS = [
+  { id:1,  last:'Farias-Ruiz',     first:'Emily',     room:'Douglas',   math:'A', reading:'B' },
+  { id:2,  last:'Hayes',           first:"Tay'Veon",  room:'Douglas',   math:'A', reading:'B' },
+  { id:3,  last:'Hernandez Lopez', first:'Braian',    room:'Douglas',   math:'A', reading:'B' },
+  { id:4,  last:'Marks',           first:'Promise',   room:'Douglas',   math:'A', reading:'B' },
+  { id:5,  last:'Melendez Rojas',  first:'Blanca',    room:'Douglas',   math:'A', reading:'B' },
+  { id:6,  last:'Llamas',          first:'Briza',     room:'Fields',    math:'B', reading:'C' },
+  { id:7,  last:'Martinez Pereda', first:'America',   room:'Fields',    math:'B', reading:'C' },
+  { id:8,  last:'Posadas',         first:'Evelyn',    room:'Fields',    math:'B', reading:'C' },
+  { id:9,  last:'Ramirez Ordonez', first:'Shery',     room:'Fields',    math:'B', reading:'C' },
+  { id:10, last:'Thurman-Bryant',  first:'Brooklyn',  room:'Fields',    math:'B', reading:'C' },
+  { id:11, last:'Vertiz Cabrera',  first:'Antonio',   room:'Fields',    math:'B', reading:'C' },
+  { id:12, last:'Williams',        first:'Cordasha',  room:'Fields',    math:'B', reading:'C' },
+  { id:13, last:'Bernabe-Morales', first:'Gael',      room:'Skoczylas', math:'C', reading:'A' },
+  { id:14, last:'Cambron Avila',   first:'Kimberly',  room:'Skoczylas', math:'C', reading:'A' },
+  { id:15, last:'Davis',           first:'Jerry',     room:'Skoczylas', math:'C', reading:'A' },
+  { id:16, last:'Duenas Rojas',    first:'Anderson',  room:'Skoczylas', math:'C', reading:'A' },
+  { id:17, last:'Garcia Soto',     first:'Vannia',    room:'Skoczylas', math:'C', reading:'A' },
+  { id:18, last:'Leiva Lopez',     first:'Emiley',    room:'Skoczylas', math:'C', reading:'A' },
+  { id:19, last:'Ramirez',         first:'Christian', room:'Skoczylas', math:'C', reading:'A' },
+  { id:20, last:'Ramos',           first:'Aryanis',   room:'Skoczylas', math:'C', reading:'A' },
+  { id:21, last:'Schauinger',      first:'Anniston',  room:'Skoczylas', math:'C', reading:'A' },
+  { id:22, last:'Smallwood',       first:'Aliviana',  room:'Skoczylas', math:'C', reading:'A' },
+  { id:23, last:'Soza Jarquin',    first:'Hilary',    room:'Skoczylas', math:'C', reading:'A' },
+  { id:24, last:'Wright',          first:'Makai',     room:'Skoczylas', math:'C', reading:'A' },
+];
+
+// ── STATE ──
+const READ_STATES  = [ {cls:'r0', label:'—'},  {cls:'r1', label:'↗'},  {cls:'r2', label:'✓'} ];
+const LANG_STATES  = [ {cls:'l0', label:'S'},   {cls:'l1', label:'W'},   {cls:'l2', label:'P'},  {cls:'l3', label:'SE'} ];
+const PART_STATES  = [ {cls:'p0', label:'—'},  {cls:'p1', label:'P'},  {cls:'p2', label:'V'} ];
+const REG_STATES   = [ {cls:'g0', label:'✓'},  {cls:'g1', label:'△'},  {cls:'g2', label:'⚠'} ];
+
+let obs = {};  // {id: {read, lang, part, reg, notes, mll, tier3, flag}}
+let activeFilter = 'all';
+
+function defaultObs(id) {
+  return { read:0, lang:0, part:0, reg:0, notes:'', mll:false, tier3:false, flag:false };
+}
+
+function loadState() {
+  const saved = localStorage.getItem('ahhaMllTracker');
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      obs = parsed.obs || {};
+      document.getElementById('sessDate').value = parsed.date || todayStr();
+      document.getElementById('sessBlock').value = parsed.block || '';
+      document.getElementById('sessSubject').value = parsed.subject || 'Reading';
+      document.getElementById('sessActivity').value = parsed.activity || '';
+      document.getElementById('sessionNotes').value = parsed.sessionNotes || '';
+    } catch(e) { initFresh(); }
+  } else { initFresh(); }
+  STUDENTS.forEach(s => { if (!obs[s.id]) obs[s.id] = defaultObs(s.id); });
+}
+
+function initFresh() {
+  obs = {};
+  document.getElementById('sessDate').value = todayStr();
+}
+
+function todayStr() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function saveSession() {
+  const state = {
+    date: document.getElementById('sessDate').value,
+    block: document.getElementById('sessBlock').value,
+    subject: document.getElementById('sessSubject').value,
+    activity: document.getElementById('sessActivity').value,
+    sessionNotes: document.getElementById('sessionNotes').value,
+    obs
+  };
+  localStorage.setItem('ahhaMllTracker', JSON.stringify(state));
+  const btn = document.querySelector('.session-save-btn');
+  btn.textContent = '✓ Saved';
+  setTimeout(() => btn.textContent = '💾 Save', 1500);
+}
+
+function clearSession() {
+  if (!confirm('Start a new session? Observation data for this session will be cleared.')) return;
+  STUDENTS.forEach(s => {
+    // Preserve MLL/Tier3 tags across sessions, reset observations
+    obs[s.id] = { ...defaultObs(s.id), mll: obs[s.id]?.mll || false, tier3: obs[s.id]?.tier3 || false };
+  });
+  document.getElementById('sessDate').value = todayStr();
+  document.getElementById('sessBlock').value = '';
+  document.getElementById('sessActivity').value = '';
+  document.getElementById('sessionNotes').value = '';
+  renderTable();
+  updateSummary();
+}
+
+// ── RENDER ──
+function renderTable() {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+  STUDENTS.forEach(s => {
+    const o = obs[s.id];
+    const needsAttn = o.reg === 2;
+    const tr = document.createElement('tr');
+    tr.id = `row-${s.id}`;
+    tr.className = needsAttn ? 'needs-attn' : '';
+    if (!matchesFilter(s, o)) tr.classList.add('hidden-row');
+
+    tr.innerHTML = `
+      <td class="td-name">
+        <div class="s-last">${s.last}</div>
+        <div class="s-first">${s.first}</div>
+        <div class="s-info">${s.room} · Math ${s.math} · Rdg ${s.reading}</div>
+      </td>
+      <td class="td-tags">
+        <span class="tag ${o.mll ? 'tag-mll-on' : 'tag-mll-off'}" onclick="toggleTag(${s.id},'mll')">MLL</span>
+        <span class="tag ${o.tier3 ? 'tag-t3-on' : 'tag-t3-off'}" onclick="toggleTag(${s.id},'tier3')">T3</span>
+      </td>
+      <td class="td-status">
+        <div class="sind ${READ_STATES[o.read].cls}" onclick="cycle(${s.id},'read',${READ_STATES.length})"
+             title="Click to change reading engagement">${READ_STATES[o.read].label}</div>
+      </td>
+      <td class="td-status">
+        <div class="sind ${LANG_STATES[o.lang].cls}" onclick="cycle(${s.id},'lang',${LANG_STATES.length})"
+             title="S=Silent, W=Words, P=Phrases, SE=Sentences">${LANG_STATES[o.lang].label}</div>
+      </td>
+      <td class="td-status">
+        <div class="sind ${PART_STATES[o.part].cls}" onclick="cycle(${s.id},'part',${PART_STATES.length})"
+             title="—=None, P=Prompted, V=Volunteer">${PART_STATES[o.part].label}</div>
+      </td>
+      <td class="td-status">
+        <div class="sind ${REG_STATES[o.reg].cls}" onclick="cycle(${s.id},'reg',${REG_STATES.length})"
+             title="✓=Regulated, △=1 redirect, ⚠=2+ redirects">${REG_STATES[o.reg].label}</div>
+      </td>
+      <td class="td-note">
+        <textarea class="note-inp" placeholder="Quick note…" onchange="setNote(${s.id},this.value)"
+          onfocus="this.rows=3" onblur="this.rows=1">${o.notes}</textarea>
+
+```
+  </td>
+  <td class="td-status no-print">
+    <span class="${o.flag ? 'tag-flag-on' : 'tag-flag-off'}" onclick="toggleTag(${s.id},'flag')"
+          title="Flag for follow-up">⚑</span>
+  </td>
+`;
+tbody.appendChild(tr);
+```
+
+});
+updateSummary();
+}
+
+function matchesFilter(s, o) {
+switch(activeFilter) {
+case ‘mll’:      return o.mll;
+case ‘tier3’:    return o.tier3;
+case ‘flag’:     return o.flag;
+case ‘attn’:     return o.reg === 2;
+case ‘Douglas’:  return s.room === ‘Douglas’;
+case ‘Fields’:   return s.room === ‘Fields’;
+case ‘Skoczylas’:return s.room === ‘Skoczylas’;
+default:         return true;
+}
+}
+
+function cycle(id, field, len) {
+obs[id][field] = (obs[id][field] + 1) % len;
+refreshRow(id);
+updateSummary();
+autoSave();
+}
+
+function toggleTag(id, field) {
+obs[id][field] = !obs[id][field];
+refreshRow(id);
+updateSummary();
+autoSave();
+}
+
+function setNote(id, val) {
+obs[id].notes = val;
+autoSave();
+}
+
+function refreshRow(id) {
+const s = STUDENTS.find(x => x.id === id);
+const o = obs[id];
+const tr = document.getElementById(`row-${id}`);
+if (!tr) return;
+
+tr.className = o.reg === 2 ? ‘needs-attn’ : ‘’;
+if (!matchesFilter(s, o)) tr.classList.add(‘hidden-row’);
+
+// Update MLL/T3 tags
+tr.querySelector(’[onclick*=”'mll'”]’).className = `tag ${o.mll ? 'tag-mll-on' : 'tag-mll-off'}`;
+tr.querySelector(’[onclick*=”'tier3'”]’).className = `tag ${o.tier3 ? 'tag-t3-on' : 'tag-t3-off'}`;
+
+// Update status indicators
+const cells = tr.querySelectorAll(’.sind’);
+cells[0].className = `sind ${READ_STATES[o.read].cls}`; cells[0].textContent = READ_STATES[o.read].label;
+cells[1].className = `sind ${LANG_STATES[o.lang].cls}`; cells[1].textContent = LANG_STATES[o.lang].label;
+cells[2].className = `sind ${PART_STATES[o.part].cls}`; cells[2].textContent = PART_STATES[o.part].label;
+cells[3].className = `sind ${REG_STATES[o.reg].cls}`;   cells[3].textContent = REG_STATES[o.reg].label;
+
+// Flag
+const flagEl = tr.querySelector(’.tag-flag-on, .tag-flag-off’);
+if (flagEl) { flagEl.className = o.flag ? ‘tag-flag-on’ : ‘tag-flag-off’; }
+}
+
+function updateSummary() {
+const visible = STUDENTS.filter(s => !document.getElementById(`row-${s.id}`)?.classList.contains(‘hidden-row’));
+const count = visible.length;
+const activeRead  = visible.filter(s => obs[s.id].read  === 2).length;
+const vol         = visible.filter(s => obs[s.id].part  === 2).length;
+const redirect    = visible.filter(s => obs[s.id].reg   === 1).length;
+const escalated   = visible.filter(s => obs[s.id].reg   === 2).length;
+const mllCount    = STUDENTS.filter(s => obs[s.id].mll).length;
+const t3Count     = STUDENTS.filter(s => obs[s.id].tier3).length;
+
+document.getElementById(‘sum-total’).textContent    = count;
+document.getElementById(‘sum-reading’).textContent  = activeRead;
+document.getElementById(‘sum-vol’).textContent      = vol;
+document.getElementById(‘sum-redirect’).textContent = redirect;
+document.getElementById(‘sum-escalated’).textContent= escalated;
+document.getElementById(‘sum-mll’).textContent      = mllCount;
+document.getElementById(‘sum-t3’).textContent       = t3Count;
+}
+
+// ── FILTERS ──
+function setFilter(f) {
+activeFilter = f;
+document.querySelectorAll(’.fbtn’).forEach(b => b.classList.remove(‘on’));
+const map = { all:‘f-all’, mll:‘f-mll’, tier3:‘f-tier3’, flag:‘f-flag’, attn:‘f-attn’,
+Douglas:‘f-douglas’, Fields:‘f-fields’, Skoczylas:‘f-sko’ };
+if (map[f]) document.getElementById(map[f]).classList.add(‘on’);
+STUDENTS.forEach(s => {
+const tr = document.getElementById(`row-${s.id}`);
+if (!tr) return;
+tr.classList.toggle(‘hidden-row’, !matchesFilter(s, obs[s.id]));
+});
+updateSummary();
+}
+
+// ── AUTO-SAVE ──
+let saveTimer = null;
+function autoSave() {
+clearTimeout(saveTimer);
+saveTimer = setTimeout(saveSession, 1500);
+}
+
+// ── NOTES auto-save ──
+document.addEventListener(‘DOMContentLoaded’, () => {
+loadState();
+renderTable();
+document.getElementById(‘sessDate’).addEventListener(‘change’, autoSave);
+document.getElementById(‘sessBlock’).addEventListener(‘change’, autoSave);
+document.getElementById(‘sessSubject’).addEventListener(‘change’, autoSave);
+document.getElementById(‘sessActivity’).addEventListener(‘input’, autoSave);
+document.getElementById(‘sessionNotes’).addEventListener(‘input’, autoSave);
+});
+</script>
+
+</body>
+</html>
